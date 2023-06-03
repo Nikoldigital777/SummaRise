@@ -1,5 +1,3 @@
-Certainly! Here's an example README file that you can use for your project:
-
 # BART Summarizer Web App
 
 This is a web application that uses the BART (Bidirectional and Auto-Regressive Transformers) model for text summarization. It allows users to input text and obtain a concise summary of the input.
