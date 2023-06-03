@@ -1,0 +1,72 @@
+Certainly! Here's an example README file that you can use for your project:
+
+# BART Summarizer Web App
+
+This is a web application that uses the BART (Bidirectional and Auto-Regressive Transformers) model for text summarization. It allows users to input text and obtain a concise summary of the input.
+
+## Features
+
+- User-friendly interface: The web app provides a simple and intuitive user interface for inputting text and viewing the generated summaries.
+- BART summarization: The app utilizes the BART model from Hugging Face's Transformers library to generate summaries. The model is pre-trained on a large corpus and has demonstrated excellent performance in text summarization tasks.
+- Summary customization: The app uses the BART model's capabilities to generate summaries with customizable length and beam search parameters.
+
+## Setup and Usage
+
+1. Clone the repository to your local machine.
+
+2. Install the required Python packages:
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Run the Flask app:
+   ```
+   python app.py
+   ```
+
+4. Access the web app:
+   ```
+   http://localhost:5000
+   ```
+   The web app will be running on your local machine.
+
+5. Enter the text you want to summarize in the provided input field.
+
+6. Click the "Summarize" button to generate the summary.
+
+## Customization
+
+- Adjusting summary length: You can customize the length of the generated summary by modifying the `max_length` parameter in the `summarize_text()` function.
+
+- Modifying beam search: The beam search algorithm used in the BART model can be adjusted by changing the `num_beams` parameter in the `summarize_text()` function.
+
+- Styling the web app: You can modify the HTML and CSS in the `index.html` file to customize the appearance and layout of the web app.
+
+## Dependencies
+
+The following libraries are used in this project:
+- Flask: Web framework for creating the web app.
+- Transformers: Hugging Face library for working with BART model.
+- Flask-ngrok: Provides a public URL for local web app testing.
+
+Please refer to the `requirements.txt` file for specific versions of the dependencies used.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+Feel free to modify and adapt the code to suit your needs.
+
+## Credits
+
+This project utilizes the BART model from Hugging Face's Transformers library for text summarization. For more information on BART, please refer to the official documentation: [BART Documentation](https://huggingface.co/transformers/model_doc/bart.html)
+
+## Author
+
+Nikol Digital (https://github.com/nikoldigital777)
+
+If you have any questions or suggestions, feel free to reach out to me.
+
+---
+
+Feel free to customize the README file according to your specific project requirements, adding additional sections or information as needed.
