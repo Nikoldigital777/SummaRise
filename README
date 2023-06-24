@@ -1,6 +1,6 @@
-# BART Summarizer Web App
+# BART Text Summarizer Web App
 
-This is a web application that uses the BART (Bidirectional and Auto-Regressive Transformers) model for text summarization. It allows users to input text and obtain a concise summary of the input.
+This is an application that uses the BART (Bidirectional and Auto-Regressive Transformers) model for text summarization. It allows users to input text and obtain a concise summary of the input.
 
 ## Features
 
