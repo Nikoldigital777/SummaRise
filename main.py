@@ -1,69 +1,80 @@
 import logging
+import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field, ValidationError
+from transformers import pipeline, Pipeline
 import torch
-from flask import Flask, request, jsonify
-from transformers import BartTokenizer, BartForConditionalGeneration
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
-app = Flask(__name__)
+# Initialize FastAPI app
+app = FastAPI(title="Text Summarization API")
 
-# Load the tokenizer and model only once, at startup, to save resources.
-try:
-    logger.info("Loading BART model and tokenizer...")
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
-    model = BartForConditionalGeneration.from_pretrained('facebook/bart-large-cnn')
-    model.eval()  # Set model to evaluation mode for inference
-    if torch.cuda.is_available():
-        model.to('cuda')
-        logger.info("Using CUDA for model inference.")
-    else:
-        logger.info("CUDA not available. Using CPU for model inference.")
-except Exception as e:
-    logger.error(f"Failed to load model/tokenizer: {e}")
-    raise e
+# Define the request body with detailed validation
+class SummarizationRequest(BaseModel):
+    text: str = Field(..., min_length=10, description="Text to summarize; must be at least 10 characters long.")
+    max_length: int = Field(150, ge=50, le=300, description="Maximum length of the summary.")
+    min_length: int = Field(40, ge=20, le=150, description="Minimum length of the summary.")
+    num_beams: int = Field(4, ge=1, le=10, description="Number of beams for beam search.")
 
-def summarize_text(text, max_input_length=1024, max_summary_length=150, num_beams=4):
-    """
-    Summarizes the provided text using the BART model.
-    
-    Parameters:
-        text (str): The text to summarize.
-        max_input_length (int): Max length for the input text.
-        max_summary_length (int): Max length of the generated summary.
-        num_beams (int): Number of beams for beam search.
-    
-    Returns:
-        str: The summarized text.
-    """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    inputs = tokenizer([text], max_length=max_input_length, return_tensors='pt', truncation=True).to(device)
-    with torch.no_grad():
-        summary_ids = model.generate(inputs['input_ids'], num_beams=num_beams, max_length=max_summary_length, early_stopping=True)
-    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-    return summary
+# Load the summarization pipeline with error handling
+def load_summarizer() -> Pipeline:
+    try:
+        logger.info("Loading summarization pipeline...")
+        device = 0 if torch.cuda.is_available() else -1
+        logger.info(f"{'Using CUDA' if device == 0 else 'CUDA not available. Using CPU'} for model inference.")
+        
+        summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=device)
+        logger.info("Summarization pipeline loaded successfully.")
+        return summarizer
+    except Exception as e:
+        logger.critical("Failed to load the summarization pipeline", exc_info=True)
+        raise RuntimeError("Failed to load summarization model. Please check model availability or dependencies.") from e
 
-@app.route('/summarize', methods=['POST'])
-def summarize_route():
+summarizer = load_summarizer()
+
+@app.post("/summarize", response_model=dict)
+async def summarize(request: SummarizationRequest):
     """
     API endpoint for text summarization.
-    
-    Expects a JSON payload with a 'text' field.
-    """
-    data = request.get_json()
-    text = data.get('text', '')
-    
-    if not text:
-        return jsonify({'error': 'No text provided for summarization.'}), 400
-    
-    try:
-        summary = summarize_text(text)
-        return jsonify({'summary': summary}), 200
-    except Exception as e:
-        logger.error(f"Error during summarization: {e}")
-        return jsonify({'error': 'Failed to summarize the text.'}), 500
 
-if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    Expects a JSON payload with a 'text' field and optional parameters.
+    """
+    text = request.text.strip()
+    if not text:
+        logger.warning("Empty text received for summarization")
+        raise HTTPException(status_code=400, detail="No text provided for summarization.")
+    
+    max_input_length = 1024
+    if len(text) > max_input_length:
+        logger.warning("Text too long for summarization endpoint")
+        raise HTTPException(status_code=400, detail=f"Input text is too long. Maximum length is {max_input_length} characters.")
+
+    try:
+        summary_list = summarizer(
+            text,
+            max_length=request.max_length,
+            min_length=request.min_length,
+            num_beams=request.num_beams,
+            truncation=True,
+        )
+        summary = summary_list[0]['summary_text']
+        logger.info("Summarization completed successfully.")
+        return {"summary": summary}
+    except ValidationError as ve:
+        logger.error(f"Validation error: {ve}")
+        raise HTTPException(status_code=422, detail="Invalid request parameters.")
+    except Exception as e:
+        logger.error(f"Unexpected error during summarization: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to summarize the text.")
+
+# Run the app using Uvicorn with environment-based configuration
+if __name__ == "__main__":
+    import uvicorn
+
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 8000))
+    log_level = os.getenv("LOG_LEVEL", "info")
+    uvicorn.run("your_script_name:app", host=host, port=port, log_level=log_level)
